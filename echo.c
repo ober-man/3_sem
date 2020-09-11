@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
                     if(strcmp(argv[n_counter], "-n") == 0)
                         continue;
                 for(int i = n_counter; i < argc; ++i)
-                    if(i == argc)
+                    if(i == argc - 1)
                         printf("%s", argv[i]);
                     else
                         printf("%s ", argv[i]);
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
 
             default: // echo <...text...>
                 for(int i = 1; i < argc; ++i)
-                    if(i == argc)
+                    if(i == argc - 1)
                         printf("%s", argv[i]);
                     else
                         printf("%s ", argv[i]);
