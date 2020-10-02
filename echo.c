@@ -2,12 +2,12 @@
 #include<string.h>
 
 //----------------------------------------------------------
-//! Command "echo" display a line of text to standard output
+//! Function "echo" display a line of text to standard output
 //!
 //!@param <...text...> list of lines to display
 //!
-//!@note the key "-n" do not output the trailing newline
-//!      number of keys "-n" isn't limited
+//!@note the option "-n" do not output the trailing newline
+//!      number of options "-n" isn't limited
 //----------------------------------------------------------
 int main(int argc, char* argv[])
 {
