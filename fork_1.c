@@ -4,8 +4,16 @@
 #include<sys/types.h>
 #include<sys/wait.h>
 
-/// Create n parallel child processes
-/// with using function 'fork'
+//----------------------------------------------------------
+//! This program create n parallel child processes
+//! with using function "fork"
+//! and display their PID and parent PID
+//!
+//!@param n Number of child processes
+//!
+//!@note To finish the parent process first
+//!      there was used function "wait"
+//----------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
