@@ -9,11 +9,6 @@
 
 const int MAXSIZE = 100;
 
-
-void id_no_args();
-void id_uid(char* arg);
-void id_name(char* arg);
-
 int main(int argc, char* argv[])
 {
     uid_t uid;
@@ -48,14 +43,14 @@ int main(int argc, char* argv[])
             if(i==0)
                 printf("%d(%s)", groups[i], grp->gr_name);
             else
-                printf("%d(%s) ", groups[i], grp->gr_name);
+                printf("%d(%s),", groups[i], grp->gr_name);
         }
         printf("\n");
         break;
 
-    case 2:
+    case 2: // id arg
         arg = argv[1];
-        if(isdigit(arg[0]))
+        if(isdigit(arg[0])) // id uid
         {
             uid = atoi(arg);
             user = getpwuid(uid);
@@ -66,7 +61,7 @@ int main(int argc, char* argv[])
                 exit(-1);
             }
         }
-        else
+        else // id name
         {
             user = getpwnam(arg);
             grp = getgrnam(arg);
@@ -92,22 +87,21 @@ int main(int argc, char* argv[])
     
         printf("uid=%d(%s) gid=%d(%s) groups=", user->pw_uid, user->pw_name, grp->gr_gid, grp->gr_name);
     
-        int* number;
-        *number = MAXSIZE;
-        check = getgrouplist(user->pw_name, grp->gr_gid, groups, number);
+        int number = MAXSIZE;
+        check = getgrouplist(user->pw_name, grp->gr_gid, groups, &number);
         if(check == -1)
         {
             printf("Too much groups\n");
             exit(-1);
         }
     
-        for(int i = *number-1; i >= 0; --i)
+        for(int i = number-1; i >= 0; --i)
         {
             grp = getgrgid(groups[i]);
             if(i==0)
                 printf("%d(%s)", groups[i], grp->gr_name);
             else
-                printf("%d(%s) ", groups[i], grp->gr_name);
+                printf("%d(%s),", groups[i], grp->gr_name);
         }
         printf("\n");
         break;
