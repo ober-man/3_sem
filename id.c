@@ -9,6 +9,13 @@
 
 const int MAXSIZE = 100;
 
+//--------------------------------------------------------------
+//! Function "id" prints real and effective UID and GID
+//!
+//!@param <...text...> UID or name of the requested user
+//!
+//!@note id without parameters prints current user's UID and GID
+//--------------------------------------------------------------
 int main(int argc, char* argv[])
 {
     uid_t uid;
