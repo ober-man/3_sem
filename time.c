@@ -6,11 +6,22 @@
 #include<sys/wait.h>
 #include<fcntl.h>
 #include<ctype.h>
+#include<getopt.h>
 
 extern char* optarg;
 extern int optind, opterr, optopt;
-const int maxsize = 1000;
+const int maxsize = 1024;
 
+//-----------------------------------------------------------------------
+//! Program "time" replaces the current process with a new process,
+//!		   output the execution time,
+//!		   and output number of printed words, strings and bytes
+//!
+//!@param <...text...> name of the new process and its arguments
+//!
+//!@note the option "-q" or "--quiet" do not output the text
+//!      and only output parameters
+//-----------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
 	if(argc < 2)
@@ -18,16 +29,26 @@ int main(int argc, char* argv[])
                 printf("Too less arguments\n");
                 exit(-1);
         }
+        
 	struct timespec begin;
 	struct timespec end;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
+	
+	struct option quiet;
+	quiet.name = "quiet";
+	quiet.has_arg = no_argument;
+	quiet.flag = NULL;
+	quiet.val = 'q';
+	
 	char* optstr = "+q";
-	int opt;
-	while((opt = getopt(argc, argv, optstr)) != -1)
+	int opt = 0; // current option
+	int q = 0; // option "q" flag
+	while((opt = getopt_long(argc, argv, optstr, &quiet, NULL)) != -1)
 		switch(opt)
 		{
 			case 'q':
-
+				q = 1;
+				break;
 			case '?':
 			default:
 				break;
@@ -38,22 +59,20 @@ int main(int argc, char* argv[])
 	int read_fd = fd[0];
 	int write_fd = fd[1];
 
-	char** vec = (char**)calloc(argc, sizeof(char*));
-	for(int i = 1; i < argc; ++i)
-		vec[i-1] = argv[i];
-	vec[argc-1] = NULL;
 	int pid = fork();
-	if(pid == 0) // child
+	int check = 0; // function result
+	
+	// child
+	if(pid == 0)
 	{
 		close(read_fd);
 		close(1);
 		dup(write_fd);
 		close(write_fd);
-		int check = execvp(vec[0], vec);
+		check = execvp(argv[optind], (argv + optind));
 		if(check < 0)
 		{
 			printf("Couldn't do this\n");
-			free(vec);
 			exit(-1);
 		}
 	}
@@ -65,45 +84,48 @@ int main(int argc, char* argv[])
 
 	// parent
 	close(write_fd);
-	int str = 0;
-	int word = 0;
+	int str = 0; // number of strings
+	int word = 0; // number of words
+	int size = 0; // number of bytes
 	char* buffer = (char*)calloc(maxsize, sizeof(char));
-	while(read(read_fd, buffer, 500) > 0)
-		;
-	while(write(1, buffer, sizeof(buffer)) > 0)
-		;
-				
-	fprintf(stderr, "working time is %ld ms\n", ms);
-
-	int size = sizeof(buffer);
-	int beg = 0;
-	while(isspace(buffer[beg]) && beg < size)
+	
+	int num; // number of read symbols
+	while((num = read(read_fd, buffer, maxsize)) > 0)
 	{
-		++beg;
-		continue;
-	}
-	int flag = 1; // 1 if word started
-	for(int i = beg; i < size; ++i)
-	{
-		char symb = buffer[i];
+		size += num;
+		int beg = 0; // first non-space position
+		while(isspace(buffer[beg]) && beg < num)
+			++beg; // skip space symbols
 
-		if(isspace(symb))
+		int flag = 1; // 1 if word started
+		for(int i = beg; i < num; ++i)
 		{
-			if(flag == 1)
+			char symb = buffer[i];
+
+			if(!isspace(symb))
+				flag = 1;
+			else if(flag == 1)
 			{
 				flag = 0;
 				++word;
 			}
+
+			if(symb == '\n' || symb == '\0')
+				++str;
 		}
-		else
-			flag = 1;
-
-		if(symb == '\n' || symb == '\0')
+		if(flag == 1) // no '\n' at the end
+		{
+			++word;
 			++str;
+		}
+		
+		if(!q) // there was not option "-q"
+			write(1, buffer, num);
 	}
+	close(read_fd);
 
-	fprintf(stderr, "there were %d lines, %d words and %d byte\n", str, word, size);
-	free(vec);
+	fprintf(stderr, "working time is %ld ms\n", ms);	
+	fprintf(stderr, "there were %d strings, %d words and %d bytes\n", str, word, size);
 	free(buffer);
 	return 0;
 }
