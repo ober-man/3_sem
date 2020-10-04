@@ -69,9 +69,9 @@ int main(int argc, char*argv[])
 	int fd2 = open(argv[optind+1], O_RDWR | O_CREAT, 0777);
 
 	char* buf = (char*)calloc(maxsize, sizeof(char));
-	while(read(fd1, buf, sizeof(char)) != 0)
-		while(write(fd2, buf, sizeof(char)) < sizeof(char))
-			;
+	int num;
+	while((num = read(fd1, buf, maxsize)) > 0)
+		write(fd2, buf, num);
 
 	close(fd1);
 	close(fd2);
