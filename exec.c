@@ -24,18 +24,13 @@ int main(int argc, char* argv[])
 		printf("Too less arguments\n");
 		return 0;
 	}
-	char** vec = (char**)calloc(argc, sizeof(char*));
-	for(int i = 1; i < argc; ++i)
-		vec[i-1] = argv[i];
-	vec[argc-1] = NULL;
 	int pid = fork();
 	if(pid == 0)
 	{
-		int check = execvp(vec[0], vec);
+		int check = execvp(argv[1], (argv + 1));
 		if(check < 0)
 		{
 			printf("Couldn't do this\n");
-			free(vec);
 			exit(-1);
 		}
 	}
@@ -46,6 +41,5 @@ int main(int argc, char* argv[])
 	long ms = time_nano / 1e6;
 	printf("working time is %ld ms\n", ms);
 
-	free(vec);
 	return 0;
 }
