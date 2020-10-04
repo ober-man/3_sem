@@ -16,12 +16,11 @@ const int maxsize = 1000;
 int main(int argc, char* argv[])
 {
 	char* buffer = (char*)calloc(maxsize, sizeof(char));
+	int num;
 	if(argc == 1)
 	{
-		//int size = sizeof(buffer);
-		while(read(0, buffer, sizeof(char)) != 0)
-			while(write(1, buffer, sizeof(char)) < sizeof(char))
-				;
+		while((num = read(0, buffer, maxsize)) > 0)
+			write(1, buffer, num);
 	}
 	else
 	{
@@ -33,11 +32,10 @@ int main(int argc, char* argv[])
 				printf("No such file\n");
 				exit(-1);
 			}
-			while(read(fd, buffer, sizeof(char)) != 0)
-				while(write(1, buffer, sizeof(char)) < sizeof(char))
-	                                ;
+			while((num = read(fd, buffer, maxsize)) > 0)
+				write(1, buffer, num);
 			close(fd);
-		}	
+		}
 	}
 	free(buffer);
 	return 0;
