@@ -10,7 +10,7 @@
 
 const int SEM_NUM = 9;
 
-// Semaphore BOAT contains number of passengers on the boat
+// Semaphore BOAT contains number of places on the boat
 // Initial value is 'boat_cap'
 #define BOAT 0
 
@@ -47,6 +47,8 @@ const int SEM_NUM = 9;
 // contains 1 else
 #define DOWN2BEACH 7
 
+// Semaphore EMPTY contains number of passengers on the boat
+// Initial value is 'boat_cap'
 #define EMPTY 8
 
 int pass(int num, int semid);
