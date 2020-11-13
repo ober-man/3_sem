@@ -17,7 +17,7 @@ int main(int argc, char*argv[])
 		printf("Too less arguments\n");
 		exit(-1);
 	}
-	char* optstr = "iv";
+	char* optstr = "ivf";
 	int opt;
 	int f_flag = 0;
 	while((opt = getopt(argc, argv, optstr)) != -1)
