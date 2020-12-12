@@ -63,6 +63,7 @@ int main()
 	int semid = semget(IPC_PRIVATE, 2, 0700 | IPC_CREAT);
 	check(semid);
 	
+	// Measuring context + 3 syscalls
 	for(int i = 0; i < max_size; ++i)
         {
                 pid_t pid = fork();
@@ -70,11 +71,6 @@ int main()
                 if(pid == 0)
                 {
 			clock_gettime(CLOCK_MONOTONIC, &begin);
-			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
-			v(semid, CHILD); // CHILD == 1
-			clock_gettime(CLOCK_MONOTONIC, &begin);
-			
-			p(semid, PARENT);
 			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
 			v(semid, CHILD); // CHILD == 1
 			return 0;
@@ -87,22 +83,28 @@ int main()
 	{
 		p(semid, CHILD); // wait for opportunity to get CHILD == 0
 		clock_gettime(CLOCK_MONOTONIC, &end);
-		long begin1 = atoi(sh_mem);
 		sh_mem[0] = '\0';
-		v(semid, PARENT);
-		
-		p(semid, CHILD);
-		long begin2 = atoi(sh_mem);
-		sh_mem[0] = '\0';
-		long delta = begin2 - begin1; // child syscalls time working
-		buf[i] = (end.tv_nsec - begin1) - delta;
+		buf[i] = end.tv_nsec - atoi(sh_mem);
 		
 	}
+	
+	// Measuring 3 syscalls
+	struct timespec useless;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	
+	clock_gettime(CLOCK_MONOTONIC, &useless);
+	sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
+	v(semid, CHILD);
+	p(semid, CHILD);
+	clock_gettime(CLOCK_MONOTONIC, &useless);
+	
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	long delta = end.tv_nsec - begin.tv_nsec;
 	
 	long sum = 0;
 	for(int i = 0; i < max_size; ++i)
 	{
-		sum += buf[i];
+		sum += (buf[i] - delta);
 		//printf("%ld\n", buf[i]);
 	}
 	printf("an average working time is %ld ns\n", sum/max_size);
