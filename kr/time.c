@@ -18,7 +18,7 @@
 		exit(errno); \
 	}
 
-const int max_size = 1024;
+const int max_size = 100;
 const int sh_size = 4096;
 const int sem_num = 2;
 #define CHILD 0
@@ -67,24 +67,36 @@ int main()
 	struct timespec begin;
 	struct timespec end;
 	
-	pid_t pid = fork();
-	check(pid);
-	if(pid == 0) // child
+	for(int i = 0; i < max_size; ++i)
+        {
+                pid_t pid = fork();
+                check(pid);
+                if(pid == 0)
+                {
+			clock_gettime(CLOCK_MONOTONIC, &begin);
+			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
+			v(semid, CHILD); // CHILD == 1
+			return 0;
+                }
+        }
+        
+	// parent
+	long* buf = (long*)calloc(max_size, sizeof(long));
+	for(int i = 0; i < max_size; ++i)
 	{
-		clock_gettime(CLOCK_MONOTONIC, &begin);
-		sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
-		v(semid, CHILD); // CHILD == 1
-
-		return 0;
-	}
-	else // parent
-	{
-		p(semid, CHILD);
+		p(semid, CHILD); // wait for opportunity to get CHILD == 0
 		clock_gettime(CLOCK_MONOTONIC, &end);
-		long time_nano = end.tv_nsec - atoi(sh_mem);
-		//long ms = time_nano / 1e6;
-		printf("working time is %ld ns\n", time_nano);
+		buf[i] = end.tv_nsec - atoi(sh_mem);
+		sh_mem[0] = '\0';
 	}
+	
+	long sum = 0;
+	for(int i = 0; i < max_size; ++i)
+	{
+		sum += buf[i];
+		printf("%ld\n", buf[i]);
+	}
+	printf("an average working time is %ld ns\n", sum/max_size);
 	
 	// waiting for the end of the child process
 	wait(NULL);
