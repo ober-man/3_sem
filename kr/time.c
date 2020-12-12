@@ -23,16 +23,16 @@ const int sh_size = 4096;
 const int sem_num = 2;
 #define CHILD 0
 
+struct timespec start;
+struct timespec end;
+
 int p(int semid, int num)
 {
 	struct sembuf ops;
 	ops.sem_num = num;
 	ops.sem_op = -1;
-	if(semop(semid, &ops, 1) < 0)
-	{
-		perror("Decrement error\n");
-		exit(errno);
-	}
+	int status = semop(semid, &ops, 1);
+	clock_gettime(CLOCK_MONOTONIC, &end);
 	return 0;
 }
 
@@ -41,25 +41,13 @@ int v(int semid, int num)
 	struct sembuf ops;
 	ops.sem_num = num;
 	ops.sem_op = 1;
-	if(semop(semid, &ops, 1) < 0)
-	{
-		perror("Increment error\n");
-		exit(errno);
-	}
+	semop(semid, &ops, 1);
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	return 0;
 }
 
 int main()
 {
-	int id = shmget(IPC_PRIVATE, sh_size, 0700 | IPC_CREAT);
-	check(id);
-	char* sh_mem = (char*)shmat(id, NULL, 0);
-	if(sh_mem == NULL || (void*)sh_mem == (void*)-1)
-	{
-		perror("shmat error");
-		return errno;
-	}
-
 	int semid = semget(IPC_PRIVATE, 1, 0700 | IPC_CREAT);
 	check(semid);
 	
@@ -74,7 +62,6 @@ int main()
                 if(pid == 0)
                 {
 			clock_gettime(CLOCK_MONOTONIC, &begin);
-			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
 			v(semid, CHILD); // CHILD == 1
 			return 0;
                 }
@@ -86,15 +73,14 @@ int main()
 	{
 		p(semid, CHILD); // wait for opportunity to get CHILD == 0
 		clock_gettime(CLOCK_MONOTONIC, &end);
-		buf[i] = end.tv_nsec - atoi(sh_mem);
-		sh_mem[0] = '\0';
+		buf[i] = end.tv_nsec - start.tv_nsec;
 	}
 	
 	long sum = 0;
 	for(int i = 0; i < max_size; ++i)
 	{
 		sum += buf[i];
-		printf("%ld\n", buf[i]);
+		//printf("%ld\n", buf[i]);
 	}
 	printf("an average working time is %ld ns\n", sum/max_size);
 	
@@ -102,7 +88,6 @@ int main()
 	wait(NULL);
 	
 	check(semctl(semid, sem_num, IPC_RMID));
-	shmdt(sh_mem);
 	return 0;
 }
 
