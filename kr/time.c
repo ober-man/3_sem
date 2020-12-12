@@ -18,21 +18,19 @@
 		exit(errno); \
 	}
 
-const int max_size = 100;
+const int max_size = 10000;
 const int sh_size = 4096;
 const int sem_num = 2;
 #define CHILD 0
 #define PARENT 1
-
-struct timespec end;
 
 int p(int semid, int num)
 {
 	struct sembuf ops;
 	ops.sem_num = num;
 	ops.sem_op = -1;
+	ops.sem_flg = 0;
 	int status = semop(semid, &ops, 1);
-	clock_gettime(CLOCK_MONOTONIC, &end);
 	return 0;
 }
 
@@ -41,6 +39,7 @@ int v(int semid, int num)
 	struct sembuf ops;
 	ops.sem_num = num;
 	ops.sem_op = 1;
+	ops.sem_flg = 0;
 	int status = semop(semid, &ops, 1);
 	check(status);
 	return 0;
@@ -63,14 +62,14 @@ int main()
 	int semid = semget(IPC_PRIVATE, 2, 0700 | IPC_CREAT);
 	check(semid);
 	
-	// Measuring context + 3 syscalls
+	// Measuring context + syscalls
 	for(int i = 0; i < max_size; ++i)
         {
                 pid_t pid = fork();
                 check(pid);
                 if(pid == 0)
                 {
-			clock_gettime(CLOCK_MONOTONIC, &begin);
+			clock_gettime(CLOCK_REALTIME_COARSE, &begin);
 			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
 			v(semid, CHILD); // CHILD == 1
 			return 0;
@@ -82,32 +81,33 @@ int main()
 	for(int i = 0; i < max_size; ++i)
 	{
 		p(semid, CHILD); // wait for opportunity to get CHILD == 0
-		clock_gettime(CLOCK_MONOTONIC, &end);
+		clock_gettime(CLOCK_REALTIME_COARSE, &end);
 		sh_mem[0] = '\0';
-		buf[i] = end.tv_nsec - atoi(sh_mem);
-		
+		buf[i] = (end.tv_nsec - atoi(sh_mem)) / 1e6;
 	}
 	
-	// Measuring 3 syscalls
-	struct timespec useless;
-	clock_gettime(CLOCK_MONOTONIC, &begin);
+	for(int i = 0; i < max_size; ++i)
+	{
+		struct timespec useless;
+		clock_gettime(CLOCK_REALTIME_COARSE, &begin);
 	
-	clock_gettime(CLOCK_MONOTONIC, &useless);
-	sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
-	v(semid, CHILD);
-	p(semid, CHILD);
-	clock_gettime(CLOCK_MONOTONIC, &useless);
-	
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	long delta = end.tv_nsec - begin.tv_nsec;
+		sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
+		v(semid, CHILD);
+		p(semid, CHILD);
+		
+		clock_gettime(CLOCK_REALTIME_COARSE, &end);
+		long delta = (end.tv_nsec - begin.tv_nsec) / 1e6;
+		
+		buf[i] -= delta;
+	}
 	
 	long sum = 0;
 	for(int i = 0; i < max_size; ++i)
 	{
-		sum += (buf[i] - delta);
+		sum += buf[i];
 		//printf("%ld\n", buf[i]);
 	}
-	printf("an average working time is %ld ns\n", sum/max_size);
+	printf("an average working time is %ld ms\n", sum/max_size);
 	
 	// waiting for the end of the child process
 	wait(NULL);
