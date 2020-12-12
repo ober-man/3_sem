@@ -169,7 +169,6 @@ int cap(int pass_num, int boat_cap, int ladder_cap, int trip_num, int semid)
 		semctl(semid, LADDER2BEACH, SETVAL, ladder_cap);
 		semctl(semid, LADDER2BOAT, SETVAL, ladder_cap);
 		p(semid, DOWN2BOAT);
-		printf("The ladder is down\n");
 		
 		// Waiting for filling the boat
 		z(semid, BOAT);
@@ -177,7 +176,6 @@ int cap(int pass_num, int boat_cap, int ladder_cap, int trip_num, int semid)
 		
 		// The trip
 		v(semid, DOWN2BOAT);
-		printf("The ladder is up\n");
 		printf("The trip began\n");
 		v(semid, BEGIN);
 		printf("\n");
@@ -198,7 +196,6 @@ int cap(int pass_num, int boat_cap, int ladder_cap, int trip_num, int semid)
 			p(semid, LAST);
 		
 		// Clear the boat
-		printf("The ladder is down\n");
 		p(semid, DOWN2BEACH);
 		z(semid, EMPTY);
 		if(i == trip_num)
