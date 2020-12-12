@@ -23,9 +23,6 @@ const int sh_size = 4096;
 const int sem_num = 2;
 #define CHILD 0
 
-struct timespec start1, start2;
-struct timespec end;
-
 int p(int semid, int num)
 {
 	struct sembuf ops;
@@ -33,7 +30,6 @@ int p(int semid, int num)
 	ops.sem_op = -1;
 	int status = semop(semid, &ops, 1);
 	check(status);
-	clock_gettime(CLOCK_MONOTONIC, &end);
 	return 0;
 }
 
@@ -49,12 +45,20 @@ int v(int semid, int num)
 
 int main()
 {
-	int semid = semget(IPC_PRIVATE, 1, 0700 | IPC_CREAT);
-	check(semid);
-	
-	// structures measuring the time 
 	struct timespec begin;
 	struct timespec end;
+	
+	int id = shmget(IPC_PRIVATE, sh_size, 0700 | IPC_CREAT);
+	check(id);
+	char* sh_mem = (char*)shmat(id, NULL, 0);
+	if(sh_mem == NULL || (void*)sh_mem == (void*)-1)
+	{
+		perror("shmat error");
+		return errno;
+	}
+	
+	int semid = semget(IPC_PRIVATE, 1, 0700 | IPC_CREAT);
+	check(semid);
 	
 	for(int i = 0; i < max_size; ++i)
         {
@@ -62,9 +66,9 @@ int main()
                 check(pid);
                 if(pid == 0)
                 {
-			clock_gettime(CLOCK_MONOTONIC, &start1);
+			clock_gettime(CLOCK_MONOTONIC, &begin);
+			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
 			v(semid, CHILD); // CHILD == 1
-			clock_gettime(CLOCK_MONOTONIC, &start2);
 			return 0;
                 }
         }
@@ -74,7 +78,9 @@ int main()
 	for(int i = 0; i < max_size; ++i)
 	{
 		p(semid, CHILD); // wait for opportunity to get CHILD == 0
-		buf[i] = end.tv_nsec - (start2.tv_nsec - start1.tv_nsec);
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		buf[i] = end.tv_nsec - atoi(sh_mem);
+		sh_mem[0] = '\0';
 	}
 	
 	long sum = 0;
@@ -89,6 +95,7 @@ int main()
 	wait(NULL);
 	
 	check(semctl(semid, sem_num, IPC_RMID));
+	shmdt(sh_mem);
 	return 0;
 }
 
