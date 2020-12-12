@@ -22,6 +22,9 @@ const int max_size = 100;
 const int sh_size = 4096;
 const int sem_num = 2;
 #define CHILD 0
+#define PARENT 1
+
+struct timespec end;
 
 int p(int semid, int num)
 {
@@ -29,7 +32,7 @@ int p(int semid, int num)
 	ops.sem_num = num;
 	ops.sem_op = -1;
 	int status = semop(semid, &ops, 1);
-	check(status);
+	clock_gettime(CLOCK_MONOTONIC, &end);
 	return 0;
 }
 
@@ -57,7 +60,7 @@ int main()
 		return errno;
 	}
 	
-	int semid = semget(IPC_PRIVATE, 1, 0700 | IPC_CREAT);
+	int semid = semget(IPC_PRIVATE, 2, 0700 | IPC_CREAT);
 	check(semid);
 	
 	for(int i = 0; i < max_size; ++i)
@@ -67,6 +70,11 @@ int main()
                 if(pid == 0)
                 {
 			clock_gettime(CLOCK_MONOTONIC, &begin);
+			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
+			v(semid, CHILD); // CHILD == 1
+			clock_gettime(CLOCK_MONOTONIC, &begin);
+			
+			p(semid, PARENT);
 			sprintf(sh_mem, "%ld", (long)begin.tv_nsec);
 			v(semid, CHILD); // CHILD == 1
 			return 0;
@@ -79,8 +87,16 @@ int main()
 	{
 		p(semid, CHILD); // wait for opportunity to get CHILD == 0
 		clock_gettime(CLOCK_MONOTONIC, &end);
-		buf[i] = end.tv_nsec - atoi(sh_mem);
+		long begin1 = atoi(sh_mem);
 		sh_mem[0] = '\0';
+		v(semid, PARENT);
+		
+		p(semid, CHILD);
+		long begin2 = atoi(sh_mem);
+		sh_mem[0] = '\0';
+		long delta = begin2 - begin1; // child syscalls time working
+		buf[i] = (end.tv_nsec - begin1) - delta;
+		
 	}
 	
 	long sum = 0;
