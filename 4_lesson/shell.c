@@ -15,19 +15,18 @@
 
 const int max_args = 10;
 const int max_len = 15;
+const int max_str = 100;
 char** parse(char* line, int* num, const char* delim);
 
 int main(int argc, char* argv[])
 {
-	if(argc < 2)
-	{
-		printf("Too less arguments\n");
-		exit(-1);
-	}
-
+	char* str = (char*)calloc(max_str, sizeof(char));
+	size_t len = 0;
+	getline(&str, &len, stdin);
+	
 	// Splitting by the commands, divided by a '|'
 	int cmd_num = 0;
-	char** cmds = parse(argv[1], &cmd_num, "|");
+	char** cmds = parse(str, &cmd_num, "|");
 	
 	int next_fd = 0;
 	for(int i = 0; i < cmd_num; ++i)
@@ -47,7 +46,6 @@ int main(int argc, char* argv[])
 		//child
 		if(pid == 0)
 		{
-			
 			// Read from the pipe, except the first
 			if(i != 0)
 			{
@@ -67,12 +65,14 @@ int main(int argc, char* argv[])
 			
 			check(execvp(args[0], args));
 		}
+		
 		// parent
 		wait(NULL);
 		free(args);
 		next_fd = read_fd;
 		check(close(write_fd));
 	}
+	free(str);
 	free(cmds);
 	return 0;
 }
