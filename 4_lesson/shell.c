@@ -20,60 +20,63 @@ char** parse(char* line, int* num, const char* delim);
 
 int main(int argc, char* argv[])
 {
-	char* str = (char*)calloc(max_str, sizeof(char));
+	char* str;
 	size_t len = 0;
-	getline(&str, &len, stdin);
-	
-	// Splitting by the commands, divided by a '|'
-	int cmd_num = 0;
-	char** cmds = parse(str, &cmd_num, "|");
-	
-	int next_fd = 0;
-	for(int i = 0; i < cmd_num; ++i)
-	{	
-		// Getting options/arguments of a command
-		int arg_num = 0;
-		char** args = parse(cmds[i], &arg_num, " \n\t\0");
+	while(1)
+	{
+		getline(&str, &len, stdin);
 		
-		int fd[2] = {};
-		check(pipe(fd));
-		int read_fd = fd[0];
-		int write_fd = fd[1];
+		// Splitting by the commands, divided by a '|'
+		int cmd_num = 0;
+		char** cmds = parse(str, &cmd_num, "|");
 		
-		pid_t pid = fork();
-		check(pid);
-		
-		//child
-		if(pid == 0)
-		{
-			// Read from the pipe, except the first
-			if(i != 0)
-			{
-				check(close(0));
-				check(dup(next_fd));
-				close(next_fd);
-			}
-			check(close(read_fd));
+		int next_fd = 0;
+		for(int i = 0; i < cmd_num; ++i)
+		{	
+			// Getting options/arguments of a command
+			int arg_num = 0;
+			char** args = parse(cmds[i], &arg_num, " \n\t\0");
 			
-			// Write to the pipe, except the last
-			if(i != cmd_num - 1)
+			int fd[2] = {};
+			check(pipe(fd));
+			int read_fd = fd[0];
+			int write_fd = fd[1];
+			
+			pid_t pid = fork();
+			check(pid);
+			
+			//child
+			if(pid == 0)
 			{
-				check(close(1));
-				check(dup(write_fd));
+				// Read from the pipe, except the first
+				if(i != 0)
+				{
+					check(close(0));
+					check(dup(next_fd));
+					close(next_fd);
+				}
+				check(close(read_fd));
+				
+				// Write to the pipe, except the last
+				if(i != cmd_num - 1)
+				{
+					check(close(1));
+					check(dup(write_fd));
+				}
+				check(close(write_fd));
+				
+				check(execvp(args[0], args));
 			}
+			
+			// parent
+			wait(NULL);
+			free(args);
+			next_fd = read_fd;
 			check(close(write_fd));
-			
-			check(execvp(args[0], args));
 		}
-		
-		// parent
-		wait(NULL);
-		free(args);
-		next_fd = read_fd;
-		check(close(write_fd));
+		free(cmds);
 	}
 	free(str);
-	free(cmds);
 	return 0;
 }
 
@@ -88,6 +91,8 @@ char** parse(char* line, int* num, const char* delim)
 		strcpy(str[counter++], word);
 		word = strtok(NULL, delim);
 	}
+	if(strcmp(str[0], "quit") == 0)
+		exit(0);
 	*num = counter;
 	return str;
 }
